@@ -1,0 +1,6 @@
+{
+    "start_date": "Query start date. Format should be YYYY-MM-DD",
+    "client_key": "Tiktok app client_id",
+    "open_id": "The TikTok user's unique identifier",
+    "refresh_token": "The token for refresh the access_token. It is valid for 365 days after initial insurance."
+}

@@ -1,0 +1,20 @@
+{
+    "type": ["null", "object"],
+    "properties": {
+        "create_time": {"type": ["null", "integer"]},
+        "cover_image_url": {"type": ["null", "string"]},
+        "share_url": {"type": ["null", "string"]},
+        "video_description": {"type": ["null", "string"]},
+        "duration": {"type": ["null", "integer"]},
+        "height": {"type": ["null", "integer"]},
+        "width": {"type": ["null", "integer"]},
+        "id": {"type": ["null", "string"]},
+        "title": {"type": ["null", "string"]},
+        "embed_html": {"type": ["null", "string"]},
+        "embed_link": {"type": ["null", "string"]},
+        "like_count": {"type": ["null", "integer"]},
+        "comment_count": {"type": ["null", "integer"]},
+        "share_count": {"type": ["null", "integer"]},
+        "view_count": {"type": ["null", "integer"]}
+    }
+}
