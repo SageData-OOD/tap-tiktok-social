@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import json
+import math
 import singer
 import backoff
 import requests
@@ -14,7 +15,7 @@ from datetime import datetime, timedelta
 REQUIRED_CONFIG_KEYS = ["open_id", "start_date", "refresh_token", "client_key"]
 HOST = "https://open-api.tiktok.com"
 END_POINTS = {
-    "user_info": "/oauth/userinfo/",
+    "user_info": "/user/info/",
     "video_list": "/video/list/"
 }
 LOGGER = singer.get_logger()
@@ -118,6 +119,7 @@ def refresh_access_token_if_expired(config):
     if config.get('expires_at') is None or config.get('expires_at') < datetime.utcnow():
         res = _refresh_token(config)
         config["access_token"] = res["access_token"]
+        config["open_id"] = res["open_id"]
         config["refresh_token"] = res["refresh_token"]
         config["expires_at"] = datetime.utcnow() + timedelta(seconds=res["expires_in"])
         return True
@@ -126,22 +128,20 @@ def refresh_access_token_if_expired(config):
 
 @backoff.on_exception(backoff.expo, TiktokRateLimitError, max_tries=5, factor=2)
 @utils.ratelimit(1, 1)
-def request_data(data, config, attr, headers, endpoint):
+def request_data(payload, config, headers, endpoint):
     url = HOST + endpoint
-    if attr:
-        url += "?" + "&".join([f"{k}={v}" for k, v in attr.items()])
 
-    if refresh_access_token_if_expired(config) or not data.get("access_token"):
-        data["access_token"] = config["access_token"]
+    if refresh_access_token_if_expired(config) or not payload.get("access_token"):
+        payload["access_token"] = config["access_token"]
 
-    response = requests.post(url, data=data, headers=headers)
+    response = requests.post(url, data=json.dumps(payload), headers=headers)
+    res = response.json()
     if response.status_code == 429:
         raise TiktokRateLimitError(response.text)
-    elif response.status_code != 200:
+    elif response.status_code != 200 or res["error"]["code"]:
         raise Exception(response.text)
-    res = response.json().get("data", {})
-
-    return res
+    data = res.get("data", {})
+    return data
 
 
 def get_selected_attrs(stream):
@@ -171,7 +171,7 @@ def sync_user_info(config, state, stream):
         "fields": get_selected_attrs(stream)
     }
 
-    record = request_data(data, config, [], headers, endpoint)
+    record = request_data(data, config, headers, endpoint)
 
     with singer.metrics.record_counter(stream.tap_stream_id) as counter:
         for row in record.values():
@@ -202,11 +202,11 @@ def sync_streams(config, state, stream):
     has_more = True
     data = {
         "open_id": config["open_id"],
-        "cursor": start_cursor,
+        "cursor": math.trunc(start_cursor),
         "fields": get_selected_attrs(stream)
     }
     while has_more:
-        res = request_data(data, config, [], headers, endpoint)
+        res = request_data(data, config, headers, endpoint)
 
         videos = res.get("videos", [])
         has_more = res.get("has_more", False)
