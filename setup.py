@@ -11,7 +11,7 @@ setup(
     py_modules=["tap_tiktok_social"],
     install_requires=[
         # NB: Pin these to a more specific version for tap reliability
-        "singer-python",
+        "singer-python==5.12.2",
         "requests",
     ],
     entry_points="""
@@ -19,7 +19,7 @@ setup(
     tap-tiktok-social=tap_tiktok_social:main
     """,
     packages=["tap_tiktok_social"],
-    package_data = {
+    package_data={
         "schemas": ["tap_tiktok_social/schemas/*.json"]
     },
     include_package_data=True,
