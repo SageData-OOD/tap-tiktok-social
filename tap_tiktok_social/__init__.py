@@ -139,7 +139,11 @@ def request_data(payload, config, headers, endpoint):
     if response.status_code == 429:
         raise TiktokRateLimitError(response.text)
     elif response.status_code != 200 or res["error"]["code"]:
-        raise Exception(response.text)
+        if res["error"]["message"] == '':
+            res["error"][
+                "message"] = "Make sure you provide all needed permissions while authenticating for TikTok. <read " \
+                             "user info, read public videos> "
+        raise Exception(str(res["error"]))
     data = res.get("data", {})
     return data
 
