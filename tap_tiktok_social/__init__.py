@@ -214,7 +214,8 @@ def sync_streams(config, state, stream):
 
         videos = res.get("videos", [])
         has_more = res.get("has_more", False)
-        data["cursor"] = res.get("cursor")
+        if res.get("cursor"):
+            data["cursor"] = res.get("cursor")
 
         with singer.metrics.record_counter(stream.tap_stream_id) as counter:
             for row in videos:
