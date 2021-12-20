@@ -203,9 +203,8 @@ def sync_streams(config, state, stream):
     # cursor of start date
     start_cursor = datetime.strptime(config["start_date"], "%Y-%m-%dT%H-%M-%S").timestamp() * 1000
 
-    last_successful_sync = singer.get_bookmark(state, stream.tap_stream_id, bookmark_column) \
-        if state.get("bookmarks", {}).get(stream.tap_stream_id) else \
-        0
+    last_successful_sync = int(singer.get_bookmark(state, stream.tap_stream_id, bookmark_column)
+                               if state.get("bookmarks", {}).get(stream.tap_stream_id) else 0)
 
     data = {
         "open_id": config["open_id"],
@@ -222,7 +221,7 @@ def sync_streams(config, state, stream):
             data["cursor"] = res.get("cursor")
         else:
             data["cursor"] = start_cursor
-            last_successful_sync = start_cursor
+            last_successful_sync = str(start_cursor)
             has_more = False
 
         with singer.metrics.record_counter(stream.tap_stream_id) as counter:
