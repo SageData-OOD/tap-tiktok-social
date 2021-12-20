@@ -203,7 +203,7 @@ def sync_streams(config, state, stream):
     # cursor of start date
     start_cursor = datetime.strptime(config["start_date"], "%Y-%m-%dT%H-%M-%S").timestamp() * 1000
 
-    last_successful_sync = int(singer.get_bookmark(state, stream.tap_stream_id, bookmark_column)
+    last_successful_sync = float(singer.get_bookmark(state, stream.tap_stream_id, bookmark_column)
                                if state.get("bookmarks", {}).get(stream.tap_stream_id) else 0)
 
     data = {
