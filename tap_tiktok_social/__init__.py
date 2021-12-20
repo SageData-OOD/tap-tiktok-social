@@ -188,7 +188,7 @@ def sync_user_info(config, state, stream):
 
 
 def sync_streams(config, state, stream):
-    bookmark_column = "cursor"
+    bookmark_column = "last_successful_sync"
     mdata = metadata.to_map(stream.metadata)
     schema = stream.schema.to_dict()
 
@@ -199,23 +199,31 @@ def sync_streams(config, state, stream):
     )
     endpoint = END_POINTS[stream.tap_stream_id]
     headers = {"Content-Type": "application/json"}
-    start_cursor = singer.get_bookmark(state, stream.tap_stream_id, bookmark_column) \
-        if state.get("bookmarks", {}).get(stream.tap_stream_id) else \
-        datetime.strptime(config["start_date"], "%Y-%m-%d").timestamp() * 1000
 
-    has_more = True
+    # cursor of start date
+    start_cursor = datetime.strptime(config["start_date"], "%Y-%m-%dT%H-%M-%S").timestamp() * 1000
+
+    last_successful_sync = singer.get_bookmark(state, stream.tap_stream_id, bookmark_column) \
+        if state.get("bookmarks", {}).get(stream.tap_stream_id) else \
+        0
+
     data = {
         "open_id": config["open_id"],
         "cursor": math.trunc(start_cursor),
         "fields": get_selected_attrs(stream)
     }
+    has_more = True
     while has_more:
         res = request_data(data, config, headers, endpoint)
 
         videos = res.get("videos", [])
         has_more = res.get("has_more", False)
-        if res.get("cursor"):
+        if has_more and last_successful_sync < res.get("cursor"):
             data["cursor"] = res.get("cursor")
+        else:
+            data["cursor"] = start_cursor
+            last_successful_sync = start_cursor
+            has_more = False
 
         with singer.metrics.record_counter(stream.tap_stream_id) as counter:
             for row in videos:
@@ -226,7 +234,7 @@ def sync_streams(config, state, stream):
                 singer.write_records(stream.tap_stream_id, [transformed_data])
                 counter.increment()
 
-        state = singer.write_bookmark(state, stream.tap_stream_id, bookmark_column, data["cursor"])
+        state = singer.write_bookmark(state, stream.tap_stream_id, bookmark_column, last_successful_sync)
         singer.write_state(state)
 
 
