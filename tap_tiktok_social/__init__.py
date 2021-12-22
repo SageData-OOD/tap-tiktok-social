@@ -12,7 +12,7 @@ from singer.transform import transform
 from datetime import datetime, timedelta
 
 
-REQUIRED_CONFIG_KEYS = ["open_id", "start_date", "refresh_token", "client_key"]
+REQUIRED_CONFIG_KEYS = ["open_id", "start_date", "end_date", "refresh_token", "client_key"]
 HOST = "https://open-api.tiktok.com"
 END_POINTS = {
     "user_info": "/user/info/",
@@ -188,7 +188,7 @@ def sync_user_info(config, state, stream):
 
 
 def sync_streams(config, state, stream):
-    bookmark_column = "last_successful_sync"
+    bookmark_column = "last_sync"
     mdata = metadata.to_map(stream.metadata)
     schema = stream.schema.to_dict()
 
@@ -201,40 +201,61 @@ def sync_streams(config, state, stream):
     headers = {"Content-Type": "application/json"}
 
     # cursor of start date
-    start_cursor = datetime.strptime(config["start_date"], "%Y-%m-%dT%H-%M-%S").timestamp() * 1000
+    utc_datetime = datetime.utcnow()
+    current_timestamp = utc_datetime.timestamp() * 1000
+    start_date_timestamp = datetime.strptime(config["start_date"], "%Y-%m-%dT%H-%M-%S").timestamp() * 1000
+    get_state = singer.get_bookmark(state, stream.tap_stream_id, bookmark_column) \
+        if state.get("bookmarks", {}).get(stream.tap_stream_id) else {}
 
-    last_successful_sync = singer.get_bookmark(state, stream.tap_stream_id, bookmark_column) \
-        if state.get("bookmarks", {}).get(stream.tap_stream_id) else 0
+    previous_start_cursor = float(get_state.get("previous_start_cursor")) if get_state.get("previous_start_cursor") is not None else 0
 
-    last_successful_sync = float(last_successful_sync) if last_successful_sync else 0
+    last_successful_sync = float(get_state.get("last_successful_sync")) \
+        if get_state.get("last_successful_sync") else 0
+    end_cursor = last_successful_sync if last_successful_sync else start_date_timestamp
+
+    broken_cursor = float(get_state.get("broken_cursor")) if get_state.get("broken_cursor") is not None else 0
+    # if process broke at last sync, then use that cursor as the start_cursor
+    cursor_now = current_timestamp if config["end_date"] > str(utc_datetime) else config["end_date"]
+    if broken_cursor:
+        start_cursor = broken_cursor
+    else:
+        start_cursor = cursor_now
+
     data = {
         "open_id": config["open_id"],
         "cursor": math.trunc(start_cursor),
         "fields": get_selected_attrs(stream)
     }
     has_more = True
+    latest_broken_cursor = 0
     while has_more:
         res = request_data(data, config, headers, endpoint)
 
         videos = res.get("videos", [])
         has_more = res.get("has_more", False)
-        if has_more and last_successful_sync < res.get("cursor"):
-            data["cursor"] = res.get("cursor")
-        else:
-            data["cursor"] = start_cursor
-            last_successful_sync = str(start_cursor)
-            has_more = False
 
         with singer.metrics.record_counter(stream.tap_stream_id) as counter:
             for row in videos:
+
                 # Type Conversation and Transformation
                 transformed_data = transform(row, schema, metadata=mdata)
 
-                # write one or more rows to the stream:
-                singer.write_records(stream.tap_stream_id, [transformed_data])
-                counter.increment()
+                if row["create_time"]*1000 >= end_cursor:
+                    # write one or more rows to the stream:
+                    singer.write_records(stream.tap_stream_id, [transformed_data])
+                    counter.increment()
+                    latest_broken_cursor = row["create_time"]*1000
+                else:
+                    has_more = False
+                    break
 
-        state = singer.write_bookmark(state, stream.tap_stream_id, bookmark_column, last_successful_sync)
+        if not has_more:
+            last_successful_sync = previous_start_cursor if broken_cursor else start_cursor
+            latest_broken_cursor = 0
+        else:
+            data["cursor"] = res.get("cursor")
+        new_state = {"last_successful_sync": str(last_successful_sync), "broken_cursor": str(latest_broken_cursor), "previous_start_cursor": str(cursor_now)}
+        state = singer.write_bookmark(state, stream.tap_stream_id, bookmark_column, new_state)
         singer.write_state(state)
 
 
