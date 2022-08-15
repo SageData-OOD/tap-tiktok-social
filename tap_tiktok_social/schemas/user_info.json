@@ -7,6 +7,11 @@
         "avatar_url_100": {"type": ["null", "string"]},
         "avatar_url_200": {"type": ["null", "string"]},
         "avatar_large_url": {"type": ["null", "string"]},
-        "display_name": {"type": ["null", "string"]}
+        "display_name": {"type": ["null", "string"]},
+        "followingCount": {"type": ["null", "integer"]},
+        "followerCount": {"type": ["null", "integer"]},
+        "heartCount": {"type": ["null", "integer"]},
+        "videoCount": {"type": ["null", "integer"]},
+        "diggCount": {"type": ["null", "integer"]}
     }
 }

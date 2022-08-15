@@ -179,6 +179,18 @@ def sync_user_info(config, state, stream):
 
     with singer.metrics.record_counter(stream.tap_stream_id) as counter:
         for row in record.values():
+            # DP: quick fix for followers
+            ret = requests.get(f"https://www.tiktok.com/api/user/detail/?uniqueId={row['display_name']}")
+            ret.raise_for_status()
+            user_info_public = ret.json()
+
+            row["following_count"] = user_info_public.get("followingCount")
+            row["follower_count"] = user_info_public.get("followerCount")
+            row["heart_count"] = user_info_public.get("heartCount")
+            row["video_count"] = user_info_public.get("videoCount")
+            row["digg_count"] = user_info_public.get("diggCount")
+
+
             # Type Conversation and Transformation
             transformed_data = transform(row, schema, metadata=mdata)
 
