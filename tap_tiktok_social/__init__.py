@@ -180,18 +180,15 @@ def sync_user_info(config, state, stream):
     with singer.metrics.record_counter(stream.tap_stream_id) as counter:
         for row in record.values():
             # DP: quick fix for followers
-            ret = requests.get(f"https://www.tiktok.com/api/user/detail/?uniqueId={row['display_name']}")
-            ret.raise_for_status()
-            stats = ret.json().get("userInfo", {}).get("stats", {})
+            # ret = requests.get(f"https://www.tiktok.com/api/user/detail/?uniqueId={row['display_name']}")
+            # ret.raise_for_status()
+            # stats = ret.json().get("userInfo", {}).get("stats", {})
 
-            row["following_count"] = stats.get("followingCount")
-            row["follower_count"] = stats.get("followerCount")
-            row["heart_count"] = stats.get("heartCount")
-            row["video_count"] = stats.get("videoCount")
-            row["digg_count"] = stats.get("diggCount")
-
-
-            LOGGER.info("**************ROW: %s", row)
+            # row["following_count"] = stats.get("followingCount")
+            # row["follower_count"] = stats.get("followerCount")
+            # row["heart_count"] = stats.get("heartCount")
+            # row["video_count"] = stats.get("videoCount")
+            # row["digg_count"] = stats.get("diggCount")
 
             # Type Conversation and Transformation
             transformed_data = transform(row, schema, metadata=mdata)
