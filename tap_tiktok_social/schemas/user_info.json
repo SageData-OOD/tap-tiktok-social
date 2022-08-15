@@ -8,10 +8,10 @@
         "avatar_url_200": {"type": ["null", "string"]},
         "avatar_large_url": {"type": ["null", "string"]},
         "display_name": {"type": ["null", "string"]},
-        "followingCount": {"type": ["null", "integer"]},
-        "followerCount": {"type": ["null", "integer"]},
-        "heartCount": {"type": ["null", "integer"]},
-        "videoCount": {"type": ["null", "integer"]},
-        "diggCount": {"type": ["null", "integer"]}
+        "following_count": {"type": ["null", "integer"]},
+        "follower_count": {"type": ["null", "integer"]},
+        "heart_count": {"type": ["null", "integer"]},
+        "video_count": {"type": ["null", "integer"]},
+        "digg_count": {"type": ["null", "integer"]}
     }
 }
