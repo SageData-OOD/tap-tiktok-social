@@ -104,6 +104,8 @@ def discover():
 
 
 def _refresh_token(config):
+    LOGGER.info("Refresh access token")
+    
     data = {
         'client_key': config['client_key'],
         'grant_type': 'refresh_token',
