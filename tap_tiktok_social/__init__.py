@@ -12,7 +12,8 @@ from singer.transform import transform
 from datetime import datetime, timedelta
 
 
-REQUIRED_CONFIG_KEYS = ["open_id", "start_date", "end_date", "refresh_token", "client_key"]
+REQUIRED_CONFIG_KEYS = ["open_id", "start_date",
+                        "end_date", "refresh_token", "client_key"]
 HOST = "https://open-api.tiktok.com"
 END_POINTS = {
     "user_info": "/user/info/",
@@ -61,7 +62,8 @@ def create_metadata_for_report(schema, tap_stream_id):
     key_properties = get_key_properties(tap_stream_id)
     auto_inclusion = get_attr_for_auto_inclusion(tap_stream_id)
 
-    mdata = [{"breadcrumb": [], "metadata": {"inclusion": "available", "forced-replication-method": "FULL_TABLE"}}]
+    mdata = [{"breadcrumb": [], "metadata": {
+        "inclusion": "available", "forced-replication-method": "FULL_TABLE"}}]
 
     if key_properties:
         mdata[0]["metadata"]["table-key-properties"] = key_properties
@@ -80,7 +82,8 @@ def create_metadata_for_report(schema, tap_stream_id):
                 }])
         else:
             inclusion = "automatic" if key in key_properties + auto_inclusion else "available"
-            mdata.append({"breadcrumb": ["properties", key], "metadata": {"inclusion": inclusion}})
+            mdata.append({"breadcrumb": ["properties", key], "metadata": {
+                         "inclusion": inclusion}})
 
     return mdata
 
@@ -105,7 +108,7 @@ def discover():
 
 def _refresh_token(config):
     LOGGER.info("Refresh access token")
-    
+
     data = {
         'client_key': config['client_key'],
         'grant_type': 'refresh_token',
@@ -116,6 +119,17 @@ def _refresh_token(config):
     return response.json()["data"]
 
 
+def print_credentials_metric(refresh_token, open_id):
+    creds = {
+        "raw_credentials": {
+            "data": {"refresh_token": refresh_token, "open_id": open_id}
+        }
+    }
+
+    metric = {"type": "secret", "value": creds, "tags": "tap-secret"}
+    LOGGER.info('METRIC: %s', json.dumps(metric))
+
+
 def refresh_access_token_if_expired(config):
     # if [expires_at not exist] or if [exist and less then current time] then it will update the token
     if config.get('expires_at') is None or config.get('expires_at') < datetime.utcnow():
@@ -124,6 +138,10 @@ def refresh_access_token_if_expired(config):
         config["open_id"] = res["open_id"]
         config["refresh_token"] = res["refresh_token"]
         config["expires_at"] = datetime.utcnow() + timedelta(seconds=res["expires_in"])
+
+        # print metrics for the execution context to resave
+        print_credentials_metric(res["refresh_token"], res["open_id"])
+
         return True
     return False
 
@@ -216,19 +234,23 @@ def sync_streams(config, state, stream):
     # cursor of start date
     utc_datetime = datetime.utcnow()
     current_timestamp = utc_datetime.timestamp() * 1000
-    start_date_timestamp = datetime.strptime(config["start_date"], "%Y-%m-%dT%H-%M-%S").timestamp() * 1000
+    start_date_timestamp = datetime.strptime(
+        config["start_date"], "%Y-%m-%dT%H-%M-%S").timestamp() * 1000
     get_state = singer.get_bookmark(state, stream.tap_stream_id, bookmark_column) \
         if state.get("bookmarks", {}).get(stream.tap_stream_id) else {}
 
-    previous_start_cursor = float(get_state.get("previous_start_cursor")) if get_state.get("previous_start_cursor") is not None else 0
+    previous_start_cursor = float(get_state.get("previous_start_cursor")) if get_state.get(
+        "previous_start_cursor") is not None else 0
 
     last_successful_sync = float(get_state.get("last_successful_sync")) \
         if get_state.get("last_successful_sync") else 0
     end_cursor = last_successful_sync if last_successful_sync else start_date_timestamp
 
-    broken_cursor = float(get_state.get("broken_cursor")) if get_state.get("broken_cursor") is not None else 0
+    broken_cursor = float(get_state.get("broken_cursor")) if get_state.get(
+        "broken_cursor") is not None else 0
     # if process broke at last sync, then use that cursor as the start_cursor
-    cursor_now = current_timestamp if config["end_date"] > str(utc_datetime) else config["end_date"]
+    cursor_now = current_timestamp if config["end_date"] > str(
+        utc_datetime) else config["end_date"]
     if broken_cursor:
         start_cursor = broken_cursor
     else:
@@ -255,7 +277,8 @@ def sync_streams(config, state, stream):
 
                 if row["create_time"]*1000 >= end_cursor:
                     # write one or more rows to the stream:
-                    singer.write_records(stream.tap_stream_id, [transformed_data])
+                    singer.write_records(
+                        stream.tap_stream_id, [transformed_data])
                     counter.increment()
                     latest_broken_cursor = row["create_time"]*1000
                 else:
@@ -267,8 +290,10 @@ def sync_streams(config, state, stream):
             latest_broken_cursor = 0
         else:
             data["cursor"] = res.get("cursor")
-        new_state = {"last_successful_sync": str(last_successful_sync), "broken_cursor": str(latest_broken_cursor), "previous_start_cursor": str(cursor_now)}
-        state = singer.write_bookmark(state, stream.tap_stream_id, bookmark_column, new_state)
+        new_state = {"last_successful_sync": str(last_successful_sync), "broken_cursor": str(
+            latest_broken_cursor), "previous_start_cursor": str(cursor_now)}
+        state = singer.write_bookmark(
+            state, stream.tap_stream_id, bookmark_column, new_state)
         singer.write_state(state)
 
 
@@ -305,4 +330,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
