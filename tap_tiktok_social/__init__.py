@@ -116,6 +116,7 @@ def _refresh_token(config):
     }
     url = 'https://open-api.tiktok.com/oauth/refresh_token/'
     response = requests.post(url, data=data)
+    response.raise_for_status()
     return response.json()["data"]
 
 
@@ -135,13 +136,17 @@ def refresh_access_token_if_expired(config):
     if config.get('expires_at') is None or config.get('expires_at') < datetime.utcnow():
         res = _refresh_token(config)
 
+        refresh_token = res.get("refresh_token")
+        if not refresh_token:
+            raise Exception("No refresh token returned from TikTok API server")
+
         # print metrics 
-        if res["refresh_token"] != config["refresh_token"]:
+        if refresh_token != config["refresh_token"]:
             print_credentials_metric(res["refresh_token"], res["open_id"])
 
         config["access_token"] = res["access_token"]
         config["open_id"] = res["open_id"]
-        config["refresh_token"] = res["refresh_token"]
+        config["refresh_token"] = refresh_token
         config["expires_at"] = datetime.utcnow() + timedelta(seconds=res["expires_in"])
 
 
