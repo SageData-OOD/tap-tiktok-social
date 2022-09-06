@@ -135,12 +135,12 @@ def refresh_access_token_if_expired(config):
     # if [expires_at not exist] or if [exist and less then current time] then it will update the token
     if config.get('expires_at') is None or config.get('expires_at') < datetime.utcnow():
         res = _refresh_token(config)
-        
+
         refresh_token = res.get("refresh_token", config["refresh_token"])
 
         # print metrics 
         if refresh_token != config["refresh_token"]:
-            print_credentials_metric(res["refresh_token"], res["open_id"])
+            print_credentials_metric(refresh_token, res["open_id"])
 
         config["access_token"] = res["access_token"]
         config["open_id"] = res["open_id"]
