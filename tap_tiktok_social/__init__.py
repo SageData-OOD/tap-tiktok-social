@@ -118,10 +118,12 @@ def _refresh_token(config):
     response = requests.post(url, data=data)
     response.raise_for_status()
     
-    data = response.json()["data"]
+    data = response.json().get("data")
 
-    if data.get("error_code"):
+    if not data or data.get("error_code"):
         raise Exception(data.get("description"))
+
+    return data
 
 
 def print_credentials_metric(refresh_token, open_id):
