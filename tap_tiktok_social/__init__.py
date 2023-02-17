@@ -121,7 +121,7 @@ def _refresh_token(config):
     data = response.json().get("data")
 
     if not data or data.get("error_code"):
-        raise Exception(data.get("description"))
+        raise Exception(data.get("description", "Unknown error"))
 
     return data
 

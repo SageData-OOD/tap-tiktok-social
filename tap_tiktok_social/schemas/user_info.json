@@ -12,6 +12,7 @@
         "follower_count": {"type": ["null", "integer"]},
         "heart_count": {"type": ["null", "integer"]},
         "video_count": {"type": ["null", "integer"]},
-        "digg_count": {"type": ["null", "integer"]}
+        "digg_count": {"type": ["null", "integer"]},
+        "likes_count": {"type": ["null", "integer"]}
     }
 }
